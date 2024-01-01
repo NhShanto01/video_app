@@ -1,4 +1,6 @@
-var connection = new WebSocket("ws://localhost:8000");
+var connection = new WebSocket('wss://192.168.0.106:3000');
+
+// var connection = new WebSocket('wss://192.168.0.106:8000');
 connection.onopen = function () {
     console.log('connected');
 }
@@ -79,20 +81,28 @@ connection.onmessage = function (msg) {
     }
 }
 connection.onerror = function (error) {
-    console.log(error);
+    console.log(error.toString());
+    console.log('Error Code:', error.code);
 }
 
 var name;
 var connectedUser;
 var myConn;
-var local_video = document.querySelector('#local-video');
+// var local_video = document.querySelector('#local-video');
 var remote_video = document.querySelector('#remote-video');
 var call_to_username_input = document.querySelector('#username-input');
 var call_btn = document.querySelector('#call-btn');
 var call_status = document.querySelector('.call-hang-status');
-console.log(local_video);
 
-navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+// navigator.mediaDevices.getUserMedia = navigator.mediaDevices.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.mzGetUserMedia ;
+// navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.mzGetUserMedia;
+const browserSupportsMedia = () => {
+    return navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia
+}
+// const browserSupportsMedia = () => {
+//     return navigator.mediaDevices.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia
+// }
 
 call_btn.addEventListener("click", function () {
     var call_to_username = call_to_username_input.value;
@@ -146,7 +156,7 @@ setTimeout(function () {
     else {
         console.log('something is wrong');
     }
-}, 3000);
+}, 1000);
 
 function send(message) {
     if (connectedUser) {
@@ -158,13 +168,38 @@ function send(message) {
 //online process 
 function onlineProcess(success) {
     if (success) {
+        // navigator.mediaDevices.getUserMedia({
+        //     video: true,
+        //     audio: true,
+        // },
         navigator.getUserMedia({
             video: true,
-            audio: true,
+            audio: {
+                echoCancellationType: 'system',
+                echoCancellation: true,
+                noiseSuppression: true,
+                sampleRate:24000,
+                sampleSize:16,
+                channelCount:1,
+                volume:0.5
+              },
+            
+            // audio: true,
         },
-            function (myStream) {
-                stream = myStream;
+        (stream) => {
+                // (myStream)=> {
+                // stream = myStream;
+                // local_video.srcObject = stream;
+
+                var local_video = document.querySelector('#local-video');
+                console.log(local_video);
                 local_video.srcObject = stream;
+                local_video.addEventListener("loadedmetadata", () => local_video.play());
+                // onloademetadata = (e) => {
+                //     // local_video.play();
+                // }
+                
+
 
                 var configuration = {
                     "iceServers": [
@@ -185,7 +220,6 @@ function onlineProcess(success) {
                     remote_video.srcObject = e.stream;
                     call_status.innerHTML = `<div class="call-status-warp white-text"><div class="calling-warp"> <div class="calling-hang-action"> <div class="audio-on"><i class="material-icons purple darken-2 white-text audio-toggle">mic</i> </div> <div class="call-cancel"><i class="call-cancel-icon material-icons red darken-3 white-text ">call</i></div></div></div></div>`;
 
-                    // var video_toggle = document.querySelector(".videocam-on");
                     var audio_toggle = document.querySelector(".audio-on");
 
                     // video_toggle.onclick = function () {
@@ -223,13 +257,13 @@ function onlineProcess(success) {
                     }
                 }
             },
-            function (error) {
+            (error) => {
                 alert("you can't access media");
             }
         );
     }
     else {
-        alert('something wrong')
+        alert('getUserMedia is not supported')
     }
 }
 
@@ -324,4 +358,4 @@ function hangupProcess() {
     connectedUser = null;
 }
 
-{/* <div class="call-status-warp white-text"><div class="calling-warp"> <div class="calling-hang-action"><div class="videocam-on"><i class="material-icons purple darken-2 white-text video-toggle">videocam</i></div> <div class="audio-on"><i class="material-icons purple darken-2 white-text audio-toggle">mic</i> </div> <div class="call-cancel"><i class="call-cancel-icon material-icons red darken-3 white-text ">call</i></div></div></div></div> */}
+{/* <div class="call-status-warp white-text"><div class="calling-warp"> <div class="calling-hang-action"><div class="videocam-on"><i class="material-icons purple darken-2 white-text video-toggle">videocam</i></div> <div class="audio-on"><i class="material-icons purple darken-2 white-text audio-toggle">mic</i> </div> <div class="call-cancel"><i class="call-cancel-icon material-icons red darken-3 white-text ">call</i></div></div></div></div> */ }

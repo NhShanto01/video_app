@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const app = express();
-
+const http = require('http').Server(app);
 const mongoose = require('mongoose');
 
 
@@ -20,8 +20,22 @@ const connectDb = async () => {
 }
 
 connectDb();
-app.listen(3000, () => {
-  console.log('Server is running');
+
+//Cors all routes
+app.use((req, res, next) =>{
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+});
+
+const https = require('https');
+const fs = require('fs');
+// const WebSocket = require('ws');
+
+const cred = https.createServer({
+    cert: fs.readFileSync('./ssl/localhost.crt','utf8'),
+    key: fs.readFileSync('./ssl/localhost.key','utf8'), 
+    ca: fs.readFileSync('./ssl/localhost.csr','utf8')
 });
 
 const bodyParser = require('body-parser');
@@ -36,13 +50,23 @@ app.use(express.static('public'));
 const userRoute = require('./routes/userRoute');
 app.use('/', userRoute);
 
+
+
+function sentToOtherUser(connection, message) {
+  connection.send(JSON.stringify(message));
+} 
+// http.listen(3000, '0.0.0.0', () => {
+//   console.log('Server is running');
+// });
+const httpsServer = https.createServer(cred, app);
+
 //websocket
+var WebSocketServer = require('ws').Server;
+var wss = new WebSocketServer({ server: httpsServer });
 
-var webSocketServer = require('ws').Server;
-
-var wss = new webSocketServer({
-  port: 8000
-});
+// var wss = new webSocketServer({
+//   port: 8000
+// });
 
 var users = {};
 wss.on("connection", function (conn) {
@@ -146,6 +170,5 @@ wss.on("connection", function (conn) {
 
 });
 
-function sentToOtherUser(connection, message) {
-  connection.send(JSON.stringify(message));
-} 
+
+httpsServer.listen(3000);
