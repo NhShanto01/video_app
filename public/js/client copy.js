@@ -1,4 +1,4 @@
-var connection = new WebSocket('wss://192.168.0.104:3000');
+var connection = new WebSocket('wss://192.168.0.110:3000');
 
 // var connection = new WebSocket('wss://192.168.0.106:8000');
 connection.onopen = function () {
@@ -88,9 +88,7 @@ connection.onerror = function (error) {
 var name;
 var connectedUser;
 var myConn;
-// var isCallInProgress = false;
-var userAlreadyInCall; // Declare this variable to track users in a call.
-
+var isCallInProgress = false;
 var remote_video = document.querySelector('#remote-video');
 var call_to_username_input = document.querySelector('#username-input');
 var call_btn = document.querySelector('#call-btn');
@@ -104,16 +102,13 @@ const browserSupportsMedia = () => {
 call_btn.addEventListener("click", function () {
     var call_to_username = call_to_username_input.value;
     if (call_to_username.length > 0) {
-        // if (isCallInProgress == call_to_username) {
-        //     alert("A call is already in progress. Please hang up before making a new call.");
-        //     return;
-        // }
+        if (isCallInProgress) {
+            alert("A call is already in progress. Please hang up before making a new call.");
+            return;
+        }
         connectedUser = call_to_username.toLowerCase();
         if (username == connectedUser) {
             alert("You can't call to yourself!!!");
-        }
-        else if (connectedUser === userAlreadyInCall) {
-            alert("User is already in a call. You cannot make another call.");
         }
         else {
             call_status.innerHTML = `<div class="calling-status-wrap card black white-text"> <div class="user-image"> <img src="/public/images/bg.jpg" class="caller-image circle" alt=""> </div> <div class="user-name">unknown</div> <div class="user-calling-status">Calling...</div> <div class="call-reject"><i class="material-icons red darken-3 white-text close-icon">close</i></div> </div> </div>`;
@@ -129,7 +124,6 @@ call_btn.addEventListener("click", function () {
             });
 
             call_btn.setAttribute("disabled", "disabled");
-            
             myConn.createOffer(function (offer) {
                 send({
                     type: "offer",
@@ -140,7 +134,7 @@ call_btn.addEventListener("click", function () {
             }, function (error) {
                 alert("Offer has not created!");
             });
-            userAlreadyInCall = connectedUser;
+            isCallInProgress = true;
         }
     }
     else {
@@ -152,10 +146,7 @@ setTimeout(function () {
     if (connection.readyState == 1) {
         if (username != null) {
             name = username;
-            // console.log("username is :" + name);
-
-            var usernameDisplay = document.getElementById("username-display");
-                    usernameDisplay.innerHTML = "Logged in as: " + name;
+            console.log("username is :" + name)
             send({
                 type: "online",
                 name: name
@@ -312,7 +303,7 @@ function rejectedCall(rejected_user) {
 function rejectProcess() {
     call_status.innerHTML = '';
     call_btn.removeAttribute("disabled");
-    // isCallInProgress = false; // Reset the call status
+    isCallInProgress = false; // Reset the call status
 
 }
 

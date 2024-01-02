@@ -30,9 +30,16 @@ video {
 }
 
 #remote-video {
-    width: 500px;
-    height: 500px;
+    /* width: 500px;*/
+    height: 550px; 
+    width: 100%;
 }
+@media only screen and (max-width: 600px) {
+    #remote-video {
+        width: 550px!important; 
+        height: 100%!important;
+    }
+  }
 
 .chat-wrap {
     display: block;
