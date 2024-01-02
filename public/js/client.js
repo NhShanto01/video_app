@@ -1,4 +1,6 @@
 var connection = new WebSocket('wss://192.168.0.104:3000');
+let ussserData;
+var callStatus = false;
 
 // var connection = new WebSocket('wss://192.168.0.106:8000');
 connection.onopen = function () {
@@ -7,9 +9,12 @@ connection.onopen = function () {
 
 connection.onmessage = function (msg) {
     var data = JSON.parse(msg.data);
+    ussserData = data;
     switch (data.type) {
         case "online":
+
             onlineProcess(data.success);
+
             // console.log(data);
             break;
         case "not_available":
@@ -17,7 +22,21 @@ connection.onmessage = function (msg) {
             alert(data.name + " not Available");
             call_btn.removeAttribute("disabled");
             break;
+        case "busy_user":
+            alert(data.name + " is busy. Please try again later.");
+            call_btn.removeAttribute("disabled");
+            break;
         case "offer":
+
+
+            if (callStatus) {
+                send({
+                    type: "user_busy",
+                    remote_user: name,
+                    caller: data.name
+                });
+                return;
+            }
             call_btn.setAttribute("disabled", "disabled");
             call_status.innerHTML = `<div class="calling-status-wrap card black white-text"> <div class="user-image"> <img src="${data.image}" class="caller-image circle" alt=""> </div> <div class="user-name">${data.name}</div> <div class="user-calling-status">Calling...</div> <div class="calling-action"> <div class="call-accept"><i class="material-icons green darken-2 white-text audio-icon">call</i></div> <div class="call-reject"><i class="material-icons red darken-3 white-text close-icon">close</i></div> </div> </div>`;
 
@@ -68,6 +87,7 @@ connection.onmessage = function (msg) {
             candidateProcess(data.candidate);
             break;
         case "reject":
+
             rejectProcess();
             break;
         case "accept":
@@ -81,7 +101,7 @@ connection.onmessage = function (msg) {
     }
 }
 connection.onerror = function (error) {
-    console.log(error.toString());
+    // console.log(error.toString());
     console.log('Error Code:', error.code);
 }
 
@@ -104,16 +124,15 @@ const browserSupportsMedia = () => {
 call_btn.addEventListener("click", function () {
     var call_to_username = call_to_username_input.value;
     if (call_to_username.length > 0) {
-        // if (isCallInProgress == call_to_username) {
-        //     alert("A call is already in progress. Please hang up before making a new call.");
-        //     return;
-        // }
         connectedUser = call_to_username.toLowerCase();
         if (username == connectedUser) {
             alert("You can't call to yourself!!!");
         }
         else if (connectedUser === userAlreadyInCall) {
             alert("User is already in a call. You cannot make another call.");
+        }
+        else if (callStatus) {
+            alert("The remote user's line is busy. Please try again later.");
         }
         else {
             call_status.innerHTML = `<div class="calling-status-wrap card black white-text"> <div class="user-image"> <img src="/public/images/bg.jpg" class="caller-image circle" alt=""> </div> <div class="user-name">unknown</div> <div class="user-calling-status">Calling...</div> <div class="call-reject"><i class="material-icons red darken-3 white-text close-icon">close</i></div> </div> </div>`;
@@ -126,21 +145,34 @@ call_btn.addEventListener("click", function () {
                 // alert('Call is rejected!!!')
                 call_btn.removeAttribute("disabled");
                 rejectedCall(connectedUser);
+
             });
 
             call_btn.setAttribute("disabled", "disabled");
-            
-            myConn.createOffer(function (offer) {
-                send({
-                    type: "offer",
-                    offer: offer,
-                    image: userImage
+            if (!myConn) {
+                onlineProcess(true);
+            }
+            setTimeout(() => {
+                let nnn = document.getElementById('username-input').value;
+
+                myConn.createOffer(function (offer) {
+                    send({
+                        type: "offer",
+                        offer: offer,
+                        image: userImage,
+                        callStatus: true,
+                        remote_user: nnn,
+                        caller: name,
+                    });
+                    myConn.setLocalDescription(offer);
+                }, function (error) {
+                    alert("Offer has not created!", error.message);
+                    console.log(error);
+                    console.log(error.message);
                 });
-                myConn.setLocalDescription(offer);
-            }, function (error) {
-                alert("Offer has not created!");
-            });
-            userAlreadyInCall = connectedUser;
+                userAlreadyInCall = connectedUser;
+                callStatus = true;
+            }, 5000)
         }
     }
     else {
@@ -155,7 +187,7 @@ setTimeout(function () {
             // console.log("username is :" + name);
 
             var usernameDisplay = document.getElementById("username-display");
-                    usernameDisplay.innerHTML = "Logged in as: " + name;
+            usernameDisplay.innerHTML = "Logged in as: " + name;
             send({
                 type: "online",
                 name: name
@@ -183,21 +215,21 @@ function onlineProcess(success) {
                 echoCancellationType: 'system',
                 echoCancellation: true,
                 noiseSuppression: true,
-                sampleRate:24000,
-                sampleSize:16,
-                channelCount:1,
-                volume:1
-              },
-            
+                sampleRate: 24000,
+                sampleSize: 16,
+                channelCount: 1,
+                volume: 1
+            },
+
             // audio: true,
         },
-        (stream) => {
-                
+            (stream) => {
+
                 var local_video = document.querySelector('#local-video');
                 console.log(local_video);
                 local_video.srcObject = new MediaStream([stream.getVideoTracks()[0]]);
                 local_video.addEventListener("loadedmetadata", () => local_video.play());
-                
+
                 var configuration = {
                     "iceServers": [
                         { "url": "stun:stun2.1.goggle.cpm:19302" },
@@ -305,14 +337,26 @@ function setUserProfile(name) {
 function rejectedCall(rejected_user) {
     send({
         type: "reject",
-        name: rejected_user
+        name: rejected_user,
+
     });
+}
+function resetCall() {
+    connectedUser = null;
+    if (myConn) {
+        myConn.close();
+        myConn.onicecandidate = null;
+        myConn.onaddstream = null;
+    }
+    myConn = null;
+    userAlreadyInCall = null;
 }
 
 function rejectProcess() {
     call_status.innerHTML = '';
     call_btn.removeAttribute("disabled");
     // isCallInProgress = false; // Reset the call status
+
 
 }
 
@@ -329,20 +373,31 @@ function acceptProcess() {
 function hangUp() {
     var call_cancel = document.querySelector(".call-cancel");
     call_cancel.addEventListener("click", function () {
+        callStatus = false;
         send({
-            type: "hangup"
+            type: "hangup",
+            callStatus: false
 
         });
         hangupProcess()
+
     });
 }
 function hangupProcess() {
+    console.log('hangup process being called');
     call_btn.removeAttribute("disabled");
     call_status.innerHTML = '';
     remote_video.src = null;
-    myConn.close();
-    myConn.onicecandidate = null;
-    myConn.onaddstream = null;
+    // myConn.close();
+    if (myConn) {
+        myConn.close();
+        console.log('myConn just closed this time');
+        myConn.onicecandidate = null;
+        myConn.onaddstream = null;
+    }
+    myConn = null;
+    // myConn.onicecandidate = null;
+    // myConn.onaddstream = null;
     connectedUser = null;
 }
 

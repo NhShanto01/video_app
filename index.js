@@ -48,6 +48,7 @@ app.set('views', './views');
 app.use(express.static('public'));
 
 const userRoute = require('./routes/userRoute');
+const { type } = require('os');
 app.use('/', userRoute);
 
 
@@ -89,11 +90,35 @@ wss.on("connection", function (conn) {
           success: true
         })
         break;
+  case "user_busy":
+            console.log(data.remote_user + " is busy. Please try again later.");
+            console.log('mulaaaaaa ',data.caller);
+            var connect = users[data.caller];
+            sentToOtherUser(connect, {
+              type: "busy_user",
+              name: data.remote_user,
+            });
+            break;
+
       case "offer":
+      //   if (callStatus) {
+      //     // Send an acknowledgment to the caller
+      //     send({
+      //         type: "user_busy",
+      //         name: data.name
+      //     });
+      //     return;
+      // }
+
+      // console.log(users[data.remote_user]);
+
         var connect = users[data.name];
+        // console.log(data);
+        // console.log(data.callStatus);
+        
         if (connect != null) {
           conn.otherUser = data.name;
-          console.log(data.offer);
+          // console.log(data.offer);
           sentToOtherUser(connect, {
             type: "offer",
             offer: data.offer,
